@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { socket } from '../../lib/socket.js'
 import { useStore } from '../../lib/store.js'
+import Chat from '../../shared/chat/components/Chat.jsx'
 
 export default function TicTacToePage() {
   const { lobbyId } = useParams()
@@ -17,6 +18,25 @@ export default function TicTacToePage() {
   const opponent = isHost ? routeState?.guest : routeState?.host
 
   useEffect(() => {
+    // Socket bağlı değilse bağlan
+    if (!socket.connected) {
+      socket.connect()
+      socket.once('connect', () => {
+        if (mySessionId) {
+          socket.emit('register', { sessionId: mySessionId })
+        }
+      })
+    } else if (mySessionId) {
+      // Bağlı ama register edilmemişse
+      socket.emit('register', { sessionId: mySessionId })
+    }
+
+    // Oyun state'ini yükle (lobbyId varsa)
+    if (lobbyId && routeState?.host && routeState?.guest) {
+      // Backend'den oyun state'ini iste
+      socket.emit('get_game_state', { lobbyId })
+    }
+
     socket.on('game_state_updated', (state) => {
       setGameState(state)
       if (state.status === 'finished') {
@@ -31,8 +51,9 @@ export default function TicTacToePage() {
     return () => {
       socket.off('game_state_updated')
       socket.off('opponent_disconnected')
+      socket.off('get_game_state') // init_game için de kullanabiliriz
     }
-  }, [mySessionId])
+  }, [mySessionId, lobbyId, routeState])
 
   function makeMove(index) {
     if (!gameState || gameState.board[index] || gameState.currentTurn !== mySessionId || result) return
@@ -138,6 +159,9 @@ export default function TicTacToePage() {
           Teslim Ol
         </button>
       )}
+
+      {/* Chat */}
+      {lobbyId && <Chat roomId={lobbyId} position="bottom-right" />}
     </div>
   )
 }

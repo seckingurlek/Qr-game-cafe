@@ -1,5 +1,6 @@
 import { handleLobbyEvents } from './lobby.js'
 import { handleGameEvents } from './game.js'
+import { handleChatEvents } from './chat.js'
 import { RedisKeys } from '../db/redis.js'
 
 export function registerSocketHandlers(io, db, redis) {
@@ -27,6 +28,9 @@ export function registerSocketHandlers(io, db, redis) {
 
     // Oyun event'leri
     handleGameEvents(socket, io, db, redis)
+
+    // Chat event'leri
+    handleChatEvents(socket, io, db, redis)
 
     // Bağlantı kopunca
     socket.on('disconnect', async () => {

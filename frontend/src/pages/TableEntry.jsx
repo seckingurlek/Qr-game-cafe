@@ -10,12 +10,17 @@ export default function TableEntry() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    console.log('QR Code:', qrCode)
     api.getTableByQR(qrCode)
       .then(table => {
+        console.log('Table found:', table)
         setTable(table)
         navigate('/menu', { replace: true })
       })
-      .catch(() => setError('Bu QR kodu geçersiz.'))
+      .catch(err => {
+        console.error('Error:', err)
+        setError('Bu QR kodu geçersiz.')
+      })
   }, [qrCode])
 
   if (error) return (

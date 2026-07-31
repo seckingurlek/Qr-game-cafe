@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: cafe123
       POSTGRES_DB: cafedb
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -41,14 +41,17 @@ services:
       dockerfile: Dockerfile
     container_name: cafe_backend
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    # Internal port only (no external exposure)
+    expose:
+      - "3000"
     environment:
       NODE_ENV: development
       PORT: 3000
       DATABASE_URL: postgresql://cafe:cafe123@postgres:5432/cafedb
       REDIS_URL: redis://redis:6379
-      CORS_ORIGIN: http://localhost:5173
+      CORS_ORIGIN: https://paftacafe.seckingurlek.cloud
+      FRONTEND_URL: https://paftacafe.seckingurlek.cloud
+      ADMIN_PASSWORD: admin123
     depends_on:
       postgres:
         condition: service_healthy
@@ -56,6 +59,7 @@ services:
         condition: service_healthy
     volumes:
       - ./backend:/app
+      - ./scripts:/scripts
       - /app/node_modules
     command: npm run dev
 
@@ -65,17 +69,27 @@ services:
       dockerfile: Dockerfile
     container_name: cafe_frontend
     restart: unless-stopped
-    ports:
-      - "5173:5173"
+    # Internal port only (no external exposure)
+    expose:
+      - "80"
     environment:
-      VITE_API_URL: http://localhost:3000
-      VITE_SOCKET_URL: http://localhost:3000
+      VITE_API_URL: https://paftacafe.seckingurlek.cloud
+      VITE_SOCKET_URL: https://paftacafe.seckingurlek.cloud
     depends_on:
       - backend
+
+  # Reverse Proxy - Single entry point
+  nginx:
+    image: nginx:alpine
+    container_name: cafe_nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
     volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    command: npm run dev -- --host
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
 
 volumes:
   postgres_data:

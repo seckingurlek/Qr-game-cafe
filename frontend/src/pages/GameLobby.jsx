@@ -15,11 +15,17 @@ export default function GameLobby() {
   const [lobbies, setLobbies] = useState([])
   const [myLobbyId, setMyLobbyId] = useState(null)
   const [status, setStatus] = useState('browsing') // browsing | waiting | matched
+  const [isCreating, setIsCreating] = useState(false)
   const game = GAME_INFO[gameSlug]
 
   if (!session) { navigate('/nickname'); return null }
 
   useEffect(() => {
+    // Socket bağlı değilse bağlan
+    if (!socket.connected) {
+      socket.connect()
+    }
+
     // Lobi listesini dinle
     socket.emit('watch_lobbies', { gameSlug })
     socket.on('lobby_list_updated', setLobbies)
@@ -50,11 +56,38 @@ export default function GameLobby() {
   }, [gameSlug])
 
   function createLobby() {
+    if (!socket.connected) {
+      alert('Bağlantı yok. Lütfen bekleyin...')
+      return
+    }
+
+    if (isCreating) {
+      return // Zaten oluşturuluyor, çift tıklamayı engelle
+    }
+
+    setIsCreating(true)
+    console.log('Creating lobby...', { gameSlug, sessionId: session.sessionId })
+
     socket.emit('create_lobby', { gameSlug, sessionId: session.sessionId })
+
     socket.once('lobby_created', ({ lobbyId }) => {
+      console.log('Lobby created:', lobbyId)
+      setIsCreating(false)
       setMyLobbyId(lobbyId)
       setStatus('waiting')
     })
+
+    socket.once('error', () => {
+      setIsCreating(false)
+    })
+
+    // Timeout - 5 saniye içinde cevap gelmezse
+    setTimeout(() => {
+      if (status === 'browsing') {
+        setIsCreating(false)
+        alert('Lobi oluşturulamadı. Tekrar deneyin.')
+      }
+    }, 5000)
   }
 
   function joinLobby(lobbyId) {
@@ -167,8 +200,17 @@ export default function GameLobby() {
 
       {/* Lobi oluştur */}
       {status === 'browsing' && (
-        <button className="btn btn-primary" onClick={createLobby} style={{ marginTop: 24 }}>
-          + Yeni Oyun Aç
+        <button
+          className="btn btn-primary"
+          onClick={createLobby}
+          disabled={isCreating}
+          style={{
+            marginTop: 24,
+            opacity: isCreating ? 0.6 : 1,
+            cursor: isCreating ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {isCreating ? '⏳ Oluşturuluyor...' : '+ Yeni Oyun Aç'}
         </button>
       )}
     </div>

@@ -9,9 +9,19 @@ import tablesRouter from './routes/tables.js'
 import sessionsRouter from './routes/sessions.js'
 import scoresRouter from './routes/scores.js'
 import lobbiesRouter from './routes/lobbies.js'
+import adminRouter from './routes/admin.js'
+import { adminAuthMiddleware } from './middleware/adminAuth.js'
 import { registerSocketHandlers } from './socket/index.js'
+import path from 'path'
+import { fileURLToPath } from 'url'
+import fastifyStatic from '@fastify/static'
+import { promises as fs } from 'fs'
 
 const PORT = process.env.PORT || 3000
+
+// __dirname equivalent for ES modules
+const __filename = import.meta.url
+const __dirname = path.dirname(fileURLToPath(__filename))
 
 // Fastify - serverFactory ile Socket.io'yu aynı porta bağla
 const app = Fastify({ logger: true })
@@ -28,11 +38,28 @@ await app.register(cors, {
   methods: ['GET', 'POST', 'PUT', 'DELETE']
 })
 
+// Static files - QR codes
+const qrCodesDir = path.join(process.cwd(), '../scripts/qr-codes')
+// Klasör yoksa oluştur
+await fs.mkdir(qrCodesDir, { recursive: true }).catch(() => {})
+
+await app.register(fastifyStatic, {
+  root: qrCodesDir,
+  prefix: '/qr-codes/',
+  decorateReply: false
+})
+
 // Routes
 await app.register(tablesRouter,   { prefix: '/api/tables' })
 await app.register(sessionsRouter, { prefix: '/api/sessions' })
 await app.register(scoresRouter,   { prefix: '/api/scores' })
 await app.register(lobbiesRouter,  { prefix: '/api/lobbies' })
+
+// Admin routes with auth middleware
+await app.register(adminRouter, {
+  prefix: '/api/admin',
+  onRequest: adminAuthMiddleware // Apply auth to all admin routes
+})
 
 // Health check
 app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))

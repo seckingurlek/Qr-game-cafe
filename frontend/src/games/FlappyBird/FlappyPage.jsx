@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../lib/api.js'
 import { useStore } from '../../lib/store.js'
@@ -18,23 +18,9 @@ export default function FlappyPage() {
   })
   const [displayScore, setDisplayScore] = useState(0)
   const [status, setStatus] = useState('idle')
+  const [forceRender, setForceRender] = useState(0)
   const rafRef = useRef(null)
-
-  const jump = useCallback(() => {
-    const s = state.current
-    if (s.status === 'idle' || s.status === 'dead') {
-      // Restart
-      s.bird = { y: H/2, vy: 0 }
-      s.pipes = []
-      s.score = 0
-      s.frame = 0
-      s.status = 'playing'
-      setDisplayScore(0)
-      setStatus('playing')
-    } else if (s.status === 'playing') {
-      s.bird.vy = JUMP
-    }
-  }, [])
+  const jumpBlockRef = useRef(false)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -125,13 +111,10 @@ export default function FlappyPage() {
         ctx.fillStyle = '#f0f0f0'
         ctx.font = 'bold 24px Syne, sans-serif'
         ctx.textAlign = 'center'
-        ctx.fillText('Oyun Bitti', W/2, H/2 - 30)
+        ctx.fillText('Oyun Bitti', W/2, H/2 - 50)
         ctx.fillStyle = '#f5a623'
         ctx.font = 'bold 20px Space Mono, monospace'
-        ctx.fillText(`Skor: ${s.score}`, W/2, H/2 + 10)
-        ctx.fillStyle = 'rgba(240,240,240,0.7)'
-        ctx.font = '14px Syne, sans-serif'
-        ctx.fillText('Tıkla veya dokun', W/2, H/2 + 50)
+        ctx.fillText(`Skor: ${s.score}`, W/2, H/2 - 10)
       }
 
       rafRef.current = requestAnimationFrame(loop)
@@ -145,7 +128,7 @@ export default function FlappyPage() {
 
     rafRef.current = requestAnimationFrame(loop)
     return () => cancelAnimationFrame(rafRef.current)
-  }, [])
+  }, [session])
 
   return (
     <div className="page" style={{ alignItems: 'center' }}>
@@ -155,17 +138,56 @@ export default function FlappyPage() {
         <span style={{ fontFamily:'Space Mono', color:'var(--accent2)', fontWeight:700 }}>{displayScore}</span>
       </div>
 
-      <canvas
-        ref={canvasRef}
-        width={W} height={H}
-        onClick={jump}
-        onTouchStart={e => { e.preventDefault(); jump() }}
-        style={{ borderRadius:12, border:'1px solid var(--border)', cursor:'pointer', maxWidth:'100%' }}
-      />
+      <div style={{ position:'relative' }}>
+        <canvas
+          ref={canvasRef}
+          width={W} height={H}
+          onPointerDown={e => {
+            e.preventDefault()
+            e.stopPropagation()
+
+            // Çift tıklama koruması
+            if (jumpBlockRef.current) return
+
+            const s = state.current
+            if (s.status === 'idle') {
+              s.bird = { y: H/2, vy: 0 }
+              s.pipes = []
+              s.score = 0
+              s.frame = 0
+              s.status = 'playing'
+              setDisplayScore(0)
+              setStatus('playing')
+            } else if (s.status === 'playing') {
+              s.bird.vy = JUMP
+              // 200ms block - çift tıklama koruması
+              jumpBlockRef.current = true
+              setTimeout(() => { jumpBlockRef.current = false }, 200)
+            }
+          }}
+          style={{ borderRadius:12, border:'1px solid var(--border)', cursor:'pointer', maxWidth:'100%', touchAction:'none', userSelect:'none', display:'block' }}
+        />
+      </div>
 
       <button className="btn btn-ghost" onClick={() => navigate('/leaderboard/flappy')} style={{ marginTop:12, width:'auto' }}>
         🏆 Skor Tablosu
       </button>
+
+      {status === 'dead' && (
+        <button className="btn btn-primary" onClick={() => {
+          const s = state.current
+          s.bird = { y: H/2, vy: 0 }
+          s.pipes = []
+          s.score = 0
+          s.frame = 0
+          s.status = 'playing'
+          setDisplayScore(0)
+          setStatus('playing')
+          setForceRender(prev => prev + 1) // Force render
+        }} style={{ marginTop:12, width:'auto', padding:'12px 32px' }}>
+          🔄 Tekrar Oyna
+        </button>
+      )}
     </div>
   )
 }

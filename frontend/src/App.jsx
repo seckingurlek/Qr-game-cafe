@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import TableEntry from './pages/TableEntry.jsx'
 import CafeMenu from './pages/CafeMenu.jsx'
 import NicknameEntry from './pages/NicknameEntry.jsx'
@@ -11,8 +11,34 @@ import FlappyPage from './games/FlappyBird/FlappyPage.jsx'
 import WordlePage from './games/Wordle/WordlePage.jsx'
 import TicTacToePage from './games/TicTacToe/TicTacToePage.jsx'
 import ChessPage from './games/Chess/ChessPage.jsx'
+// Admin
+import AdminLogin from './pages/admin/AdminLogin.jsx'
+import AdminLayout from './pages/admin/AdminLayout.jsx'
+import AdminDashboard from './pages/admin/AdminDashboard.jsx'
+import AdminTables from './pages/admin/AdminTables.jsx'
+import AdminSessions from './pages/admin/AdminSessions.jsx'
+import AdminLobbies from './pages/admin/AdminLobbies.jsx'
+import AdminScores from './pages/admin/AdminScores.jsx'
 
-export default function App() {
+function AppContent() {
+  const location = useLocation()
+  const isAdminPath = location.pathname.startsWith('/admin')
+
+  if (isAdminPath) {
+    return (
+      <Routes>
+        <Route path="/admin" element={<AdminLogin />} />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="tables" element={<AdminTables />} />
+          <Route path="sessions" element={<AdminSessions />} />
+          <Route path="lobbies" element={<AdminLobbies />} />
+          <Route path="scores" element={<AdminScores />} />
+        </Route>
+      </Routes>
+    )
+  }
+
   return (
     <div className="app-container">
       <Routes>
@@ -50,5 +76,13 @@ export default function App() {
         <Route path="*" element={<Navigate to="/menu" replace />} />
       </Routes>
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/*" element={<AppContent />} />
+    </Routes>
   )
 }

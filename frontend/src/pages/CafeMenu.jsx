@@ -5,23 +5,23 @@ import { api } from '../lib/api.js'
 
 const menuItems = {
   'Sıcak İçecekler': [
-    { name: 'Türk Kahvesi', price: '₺65' },
-    { name: 'Americano', price: '₺75' },
-    { name: 'Latte', price: '₺95' },
-    { name: 'Cappuccino', price: '₺90' },
-    { name: 'Türk Çayı', price: '₺40' },
+    { name: 'Türk Kahvesi', price: '₺130' },
+    { name: 'Americano', price: '₺150' },
+    { name: 'Latte', price: '₺170' },
+    { name: 'Cappuccino', price: '₺170' },
+    { name: 'Türk Çayı', price: '₺70' },
   ],
   'Soğuk İçecekler': [
-    { name: 'Ice Latte', price: '₺100' },
-    { name: 'Frappe', price: '₺110' },
-    { name: 'Limonata', price: '₺80' },
-    { name: 'Meyve Suyu', price: '₺55' },
+    { name: 'Ice Latte', price: '₺170' },
+    { name: 'Frappe', price: '₺190' },
+    { name: 'Limonata', price: '₺120' },
+    { name: 'Ice Americano', price: '₺150' },
   ],
   'Atıştırmalık': [
-    { name: 'Tost', price: '₺120' },
-    { name: 'Waffle', price: '₺150' },
+    { name: 'Pafta Tost', price: '₺220' },
+    { name: 'Marlenka', price: '₺250' },
     { name: 'Kek', price: '₺70' },
-    { name: 'Kurabiye', price: '₺45' },
+    { name: 'Kurabiye', price: '₺150' },
   ]
 }
 
@@ -61,7 +61,7 @@ export default function CafeMenu() {
       <div style={{ textAlign: 'center', marginBottom: 32 }}>
         <div style={{ fontSize: 48, marginBottom: 8 }}>☕</div>
         <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.5px' }}>
-          Cafe Menu
+          Pafta Cafe Menu
         </h1>
         {table && (
           <span className="badge badge-table" style={{ marginTop: 8, display: 'inline-flex' }}>

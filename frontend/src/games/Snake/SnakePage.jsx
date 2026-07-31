@@ -4,7 +4,7 @@ import { api } from '../../lib/api.js'
 import { useStore } from '../../lib/store.js'
 
 const COLS = 20, ROWS = 20
-const CELL = 16
+const CELL = 20
 const DIRS = { UP: [0,-1], DOWN: [0,1], LEFT: [-1,0], RIGHT: [1,0] }
 
 function randFood(snake) {
@@ -42,20 +42,19 @@ export default function SnakePage() {
         return prev
       }
 
-      setFood(f => {
-        if (head[0]===f[0] && head[1]===f[1]) {
-          setScore(s => s + 10)
-          const newSnake = [head, ...prev]
-          const newFood = randFood(newSnake)
-          setFood(newFood)
-          return newFood
-        }
-        return f
-      })
+      // Yem yenildi mi?
+      const ateFood = head[0] === food[0] && head[1] === food[1]
 
-      return [head, ...prev.slice(0, -1)]
+      if (ateFood) {
+        setScore(s => s + 10)
+        const newSnake = [head, ...prev]
+        setFood(randFood(newSnake))
+        return newSnake // Kuyruk silinmez, yılan büyür!
+      }
+
+      return [head, ...prev.slice(0, -1)] // Normal hareket, kuyruk silinir
     })
-  }, [])
+  }, [food])
 
   useEffect(() => {
     if (status === 'playing') {
@@ -114,8 +113,7 @@ export default function SnakePage() {
   }
 
   return (
-    <div className="page" style={{ alignItems: 'center', paddingTop: 16 }}
-      onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <div className="page" style={{ alignItems: 'center', paddingTop: 16 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: 16 }}>
         <button onClick={() => navigate('/games')} style={{
           background: 'none', border: 'none', color: 'var(--text2)', cursor: 'pointer', fontSize: 20
@@ -126,30 +124,39 @@ export default function SnakePage() {
         </span>
       </div>
 
-      {/* Canvas */}
-      <div style={{
-        position: 'relative',
-        width: COLS*CELL,
-        height: ROWS*CELL,
-        background: 'var(--bg2)',
-        border: '2px solid var(--border)',
-        borderRadius: 8
-      }}>
+      {/* Canvas - Swipe sadece burada çalışır */}
+      <div
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        style={{
+          position: 'relative',
+          width: `min(${COLS*CELL}px, 90vw)`,
+          height: `min(${ROWS*CELL}px, 90vw)`,
+          background: 'var(--bg2)',
+          border: '2px solid var(--border)',
+          borderRadius: 8
+        }}>
         {snake.map(([x,y], i) => (
           <div key={i} style={{
             position: 'absolute',
-            left: x*CELL, top: y*CELL,
-            width: CELL-1, height: CELL-1,
+            left: `${(x / COLS) * 100}%`,
+            top: `${(y / ROWS) * 100}%`,
+            width: `${100 / COLS}%`,
+            height: `${100 / ROWS}%`,
             background: i === 0 ? '#27ae60' : '#2ecc71',
-            borderRadius: i === 0 ? 4 : 2
+            borderRadius: i === 0 ? 4 : 2,
+            boxSizing: 'border-box'
           }} />
         ))}
         <div style={{
           position: 'absolute',
-          left: food[0]*CELL, top: food[1]*CELL,
-          width: CELL-1, height: CELL-1,
+          left: `${(food[0] / COLS) * 100}%`,
+          top: `${(food[1] / ROWS) * 100}%`,
+          width: `${100 / COLS}%`,
+          height: `${100 / ROWS}%`,
           background: 'var(--accent)',
-          borderRadius: '50%'
+          borderRadius: '50%',
+          boxSizing: 'border-box'
         }} />
 
         {status !== 'playing' && (
@@ -173,32 +180,53 @@ export default function SnakePage() {
         )}
       </div>
 
-      {/* D-pad mobil için */}
-      {status === 'playing' && (
-        <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-          {[
-            [null], ['UP', '↑'], [null],
-            ['LEFT', '←'], ['DOWN', '↓'], ['RIGHT', '→']
+      {/* Yön Tuşları - Mobil ve Masaüstü */}
+      <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: 'repeat(3, 60px)', gap: 8, justifyItems: 'center' }}>
+        {[
+            null,
+            'UP',
+            null,
+            'LEFT',
+            'DOWN',
+            'RIGHT'
           ].flat().map((btn, i) => btn ? (
-            <button key={i} onTouchStart={() => {
+          <button
+            key={i}
+            onPointerDown={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              if (status !== 'playing') return
               const map = { UP:[0,-1], DOWN:[0,1], LEFT:[-1,0], RIGHT:[1,0] }
-              const [nx, ny] = map[btn[0]]
+              const [nx, ny] = map[btn]
               const [cx, cy] = dirRef.current
               if (nx !== -cx || ny !== -cy) dirRef.current = [nx, ny]
             }}
             style={{
-              background: 'var(--bg3)', border: '1px solid var(--border)',
-              borderRadius: 8, padding: '16px', fontSize: 20, cursor: 'pointer', color: 'var(--text)'
-            }}>
-              {btn[1]}
-            </button>
-          ) : <div key={i} />)}
-        </div>
-      )}
+              width: 60, height: 60,
+              background: status === 'playing' ? 'var(--bg3)' : 'var(--bg2)',
+              border: '2px solid var(--accent)',
+              borderRadius: 12,
+              opacity: status === 'playing' ? 1 : 0.5,
+              cursor: status === 'playing' ? 'pointer' : 'not-allowed',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 28, fontWeight: 'bold',
+              userSelect: 'none',
+              touchAction: 'none'
+            }}
+          >
+            {btn === 'UP' && '▲'}
+            {btn === 'DOWN' && '▼'}
+            {btn === 'LEFT' && '◀'}
+            {btn === 'RIGHT' && '▶'}
+          </button>
+        ) : <div key={i} />)}
+      </div>
 
-      <button className="btn btn-ghost" onClick={() => navigate('/leaderboard/snake')} style={{ marginTop: 16, width: 'auto' }}>
-        🏆 Skor Tablosu
-      </button>
+      {status === 'dead' && (
+        <button className="btn btn-ghost" onClick={() => navigate('/leaderboard/snake')} style={{ marginTop: 16, width: 'auto' }}>
+          🏆 Skor Tablosu
+        </button>
+      )}
     </div>
   )
 }

@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { Chessboard } from 'react-chessboard'
 import { Chess } from 'chess.js'
 import { socket } from '../../lib/socket.js'
 import { useStore } from '../../lib/store.js'
+import Chat from '../../shared/chat/components/Chat.jsx'
 
 export default function ChessPage() {
   const { lobbyId } = useParams()
@@ -11,8 +12,8 @@ export default function ChessPage() {
   const navigate = useNavigate()
   const session = useStore(s => s.session)
 
-  // chess.js instance — useRef yerine useState kullan ki re-render tetiklensin
-  const [game, setGame] = useState(new Chess())
+  // chess.js instance — useRef ile sakla, sadece gerekli state'leri useState ile tut
+  const gameRef = useRef(new Chess())
   const [fen, setFen] = useState('start')
   const [result, setResult] = useState(null) // null | 'win' | 'lose' | 'draw' | 'opponent_left'
   const [lastMove, setLastMove] = useState(null)      // { from, to }
@@ -21,6 +22,7 @@ export default function ChessPage() {
   const [capturedByMe, setCapturedByMe] = useState([])
   const [capturedByOpp, setCapturedByOpp] = useState([])
   const [moveHistory, setMoveHistory] = useState([])
+  const [renderTick, setRenderTick] = useState(0) // Zorunlu render için
 
   const mySessionId = session?.sessionId
   const isHost = routeState?.host?.sessionId === mySessionId
@@ -28,21 +30,33 @@ export default function ChessPage() {
   const opponent = isHost ? routeState?.guest : routeState?.host
 
   const isMyTurn = useCallback(() => {
-    return game.turn() === (isHost ? 'w' : 'b')
-  }, [game, isHost])
+    return gameRef.current.turn() === (isHost ? 'w' : 'b')
+  }, [isHost])
 
   // Socket event'lerini dinle
   useEffect(() => {
-    socket.on('game_state_updated', (state) => {
+    // Socket bağlı değilse bağlan
+    if (!socket.connected) {
+      socket.connect()
+      socket.once('connect', () => {
+        if (mySessionId) {
+          socket.emit('register', { sessionId: mySessionId })
+        }
+      })
+    } else if (mySessionId) {
+      // Bağlı ama register edilmemişse
+      socket.emit('register', { sessionId: mySessionId })
+    }
+
+    socket.on('game_state_updated', (newState) => {
       // Rakibin hamlesi geldi
-      if (state.lastMove && state.lastMove.sessionId !== mySessionId) {
-        const { from, to, promotion } = state.lastMove
-        const gameCopy = new Chess(game.fen())
-        const move = gameCopy.move({ from, to, promotion: promotion || 'q' })
+      if (newState.lastMove && newState.lastMove.sessionId !== mySessionId) {
+        const { from, to, promotion } = newState.lastMove
+        const move = gameRef.current.move({ from, to, promotion: promotion || 'q' })
         if (move) {
-          updateGameState(gameCopy, move)
-          if (gameCopy.isCheckmate()) setResult('lose')
-          else if (gameCopy.isDraw()) setResult('draw')
+          updateGameState(move)
+          if (gameRef.current.isCheckmate()) setResult('lose')
+          else if (gameRef.current.isDraw()) setResult('draw')
         }
       }
     })
@@ -53,11 +67,10 @@ export default function ChessPage() {
       socket.off('game_state_updated')
       socket.off('opponent_disconnected')
     }
-  }, [mySessionId, game])
+  }, [mySessionId])
 
-  function updateGameState(gameCopy, move) {
-    setGame(gameCopy)
-    setFen(gameCopy.fen())
+  function updateGameState(move) {
+    setFen(gameRef.current.fen())
     setLastMove({ from: move.from, to: move.to })
     setSelectedSquare(null)
     setPossibleMoves({})
@@ -72,6 +85,8 @@ export default function ChessPage() {
         setCapturedByOpp(prev => [...prev, piece])
       }
     }
+    // Render tick ile zorla güncelle
+    setRenderTick(prev => prev + 1)
   }
 
   // Kare tıklandığında
@@ -92,16 +107,16 @@ export default function ChessPage() {
     }
 
     // Kendi taşını seç
-    const piece = game.get(square)
+    const piece = gameRef.current.get(square)
     if (piece && piece.color === (isHost ? 'w' : 'b')) {
       setSelectedSquare(square)
 
       // Bu taşın mümkün hamlelerini vurgula
-      const moves = game.moves({ square, verbose: true })
+      const moves = gameRef.current.moves({ square, verbose: true })
       const highlights = {}
       moves.forEach(m => {
         highlights[m.to] = {
-          background: game.get(m.to)
+          background: gameRef.current.get(m.to)
             ? 'radial-gradient(circle, rgba(233,69,96,0.5) 70%, transparent 70%)'
             : 'radial-gradient(circle, rgba(0,212,255,0.4) 30%, transparent 30%)',
           borderRadius: '50%'
@@ -123,14 +138,13 @@ export default function ChessPage() {
       ((isHost && to[1] === '8') || (!isHost && to[1] === '1'))
       ? 'q' : undefined
 
-    const gameCopy = new Chess(game.fen())
-    const move = gameCopy.move({ from, to, promotion: promotion || 'q' })
+    const move = gameRef.current.move({ from, to, promotion: promotion || 'q' })
     if (!move) return false
 
-    updateGameState(gameCopy, move)
+    updateGameState(move)
 
-    const isCheckmate = gameCopy.isCheckmate()
-    const isDraw = gameCopy.isDraw()
+    const isCheckmate = gameRef.current.isCheckmate()
+    const isDraw = gameRef.current.isDraw()
 
     // Backend'e gönder
     socket.emit('make_move', {
@@ -163,9 +177,9 @@ export default function ChessPage() {
   Object.assign(customSquareStyles, possibleMoves)
 
   // Şah tehdidi
-  if (game.inCheck()) {
-    const turn = game.turn()
-    for (const row of game.board()) {
+  if (gameRef.current.inCheck()) {
+    const turn = gameRef.current.turn()
+    for (const row of gameRef.current.board()) {
       for (const cell of row) {
         if (cell && cell.type === 'k' && cell.color === turn) {
           customSquareStyles[cell.square] = { backgroundColor: 'rgba(233,69,96,0.6)' }
@@ -295,6 +309,9 @@ export default function ChessPage() {
           🏳️ Teslim Ol
         </button>
       )}
+
+      {/* Chat */}
+      {lobbyId && <Chat roomId={lobbyId} position="bottom-right" />}
     </div>
   )
 }

@@ -5,11 +5,15 @@ export function handleLobbyEvents(socket, io, db, redis) {
   // Lobi listesini dinle (realtime güncelleme için)
   socket.on('watch_lobbies', async ({ gameSlug }) => {
     socket.join(`lobbies:${gameSlug}`)
+    // Mevcut lobi listesini hemen gönder
+    await broadcastLobbyList(io, db, gameSlug)
   })
 
   // Lobi oluştur ve bekle
   socket.on('create_lobby', async ({ gameSlug, sessionId }) => {
     try {
+      console.log('🎮 create_lobby received:', { gameSlug, sessionId })
+
       // DB'de lobi oluştur
       const existing = await db.query(
         `SELECT id FROM game_lobbies WHERE host_session_id = $1 AND status = 'waiting'`,

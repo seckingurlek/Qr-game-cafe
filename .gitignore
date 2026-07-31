@@ -5,3 +5,11 @@ dist/
 *.log
 .DS_Store
 qr-codes/
+readme.md
+README.md
+
+# Admin Panel
+frontend/src/pages/admin/
+frontend/src/lib/adminApi.js
+backend/src/middleware/adminAuth.js
+backend/src/routes/admin.js
