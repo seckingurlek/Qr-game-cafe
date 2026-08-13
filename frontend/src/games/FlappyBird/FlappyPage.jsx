@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../lib/api.js'
 import { useStore } from '../../lib/store.js'
+import { useGameScrollLock } from '../../lib/hooks/useGameScrollLock.js'
 
 const W = 320, H = 480, GRAVITY = 0.5, JUMP = -9, PIPE_W = 50, GAP = 140, SPEED = 2.5
 
@@ -21,6 +22,9 @@ export default function FlappyPage() {
   const [forceRender, setForceRender] = useState(0)
   const rafRef = useRef(null)
   const jumpBlockRef = useRef(false)
+
+  // Scroll kilidi - oyun içinde her zaman aktif
+  useGameScrollLock(true)
 
   useEffect(() => {
     const canvas = canvasRef.current

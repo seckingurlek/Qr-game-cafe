@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../lib/api.js'
 import { useStore } from '../../lib/store.js'
+import { useGameScrollLock } from '../../lib/hooks/useGameScrollLock.js'
 
 const COLS = 20, ROWS = 20
 const CELL = 20
@@ -25,6 +26,10 @@ export default function SnakePage() {
   const [status, setStatus] = useState('idle') // idle | playing | dead
   const dirRef = useRef([1,0])
   const intervalRef = useRef(null)
+
+  // Scroll kilidi - oyun içinde (idle, playing, dead) her zaman aktif
+  // Component unmount olduğunda otomatik temizlenir
+  useGameScrollLock(true)
 
   const tick = useCallback(() => {
     setSnake(prev => {
@@ -134,7 +139,8 @@ export default function SnakePage() {
           height: `min(${ROWS*CELL}px, 90vw)`,
           background: 'var(--bg2)',
           border: '2px solid var(--border)',
-          borderRadius: 8
+          borderRadius: 8,
+          overscrollBehavior: 'none' // Ekstra güvenlik - pull-to-refresh engelle
         }}>
         {snake.map(([x,y], i) => (
           <div key={i} style={{
@@ -181,7 +187,7 @@ export default function SnakePage() {
       </div>
 
       {/* Yön Tuşları - Mobil ve Masaüstü */}
-      <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: 'repeat(3, 60px)', gap: 8, justifyItems: 'center' }}>
+      <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: 'repeat(3, 65px)', gap: 16, justifyItems: 'center' }}>
         {[
             null,
             'UP',

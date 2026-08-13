@@ -3,6 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { socket } from '../../lib/socket.js'
 import { useStore } from '../../lib/store.js'
 import Chat from '../../shared/chat/components/Chat.jsx'
+import { useGameScrollLock } from '../../lib/hooks/useGameScrollLock.js'
 
 export default function TicTacToePage() {
   const { lobbyId } = useParams()
@@ -11,6 +12,9 @@ export default function TicTacToePage() {
   const session = useStore(s => s.session)
   const [gameState, setGameState] = useState(null)
   const [result, setResult] = useState(null)
+
+  // Scroll kilidi - oyun içinde her zaman aktif
+  useGameScrollLock(true)
 
   const mySessionId = session?.sessionId
   const isHost = routeState?.host?.sessionId === mySessionId

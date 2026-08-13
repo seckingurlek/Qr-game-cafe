@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../lib/api.js'
 import { useStore } from '../../lib/store.js'
+import { useGameScrollLock } from '../../lib/hooks/useGameScrollLock.js'
 
 // 5 harfli Türkçe kelimeler (örnek liste - genişletilebilir)
 const WORDS = [
@@ -47,6 +48,9 @@ export default function WordlePage() {
   const [status, setStatus] = useState('playing') // playing | won | lost
   const [shake, setShake] = useState(false)
   const [letterStates, setLetterStates] = useState({})
+
+  // Scroll kilidi - oyun içinde her zaman aktif
+  useGameScrollLock(true)
 
   const MAX = 6
 

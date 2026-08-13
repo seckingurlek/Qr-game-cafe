@@ -5,6 +5,7 @@ import { Chess } from 'chess.js'
 import { socket } from '../../lib/socket.js'
 import { useStore } from '../../lib/store.js'
 import Chat from '../../shared/chat/components/Chat.jsx'
+import { useGameScrollLock } from '../../lib/hooks/useGameScrollLock.js'
 
 export default function ChessPage() {
   const { lobbyId } = useParams()
@@ -23,6 +24,9 @@ export default function ChessPage() {
   const [capturedByOpp, setCapturedByOpp] = useState([])
   const [moveHistory, setMoveHistory] = useState([])
   const [renderTick, setRenderTick] = useState(0) // Zorunlu render için
+
+  // Scroll kilidi - oyun içinde her zaman aktif
+  useGameScrollLock(true)
 
   const mySessionId = session?.sessionId
   const isHost = routeState?.host?.sessionId === mySessionId

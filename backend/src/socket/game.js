@@ -52,6 +52,20 @@ export function handleGameEvents(socket, io, db, redis) {
     io.to(`lobby:${lobbyId}`).emit('game_state_updated', initialState)
   })
 
+  // Oyun state'ini getir (sayfa yenilendiğinde veya oyuna girildiğinde)
+  socket.on('get_game_state', async ({ lobbyId }) => {
+    try {
+      const stateRaw = await redis.get(RedisKeys.game(lobbyId))
+      if (!stateRaw) {
+        return socket.emit('error', { message: 'Oyun bulunamadı veya başlatılmadı' })
+      }
+      const state = JSON.parse(stateRaw)
+      socket.emit('game_state_updated', state)
+    } catch (err) {
+      socket.emit('error', { message: 'Oyun state yüklenemedi' })
+    }
+  })
+
   // Oyunu terk et
   socket.on('resign', async ({ lobbyId, sessionId }) => {
     const stateRaw = await redis.get(RedisKeys.game(lobbyId))
@@ -128,7 +142,7 @@ function applyChessMove(state, move, sessionId) {
 
 // ─── Initial States ───────────────────────────────────────────────────────────
 
-function createInitialState(gameSlug, hostSessionId, guestSessionId, lobbyId) {
+export function createInitialState(gameSlug, hostSessionId, guestSessionId, lobbyId) {
   const base = {
     lobbyId,
     gameSlug,

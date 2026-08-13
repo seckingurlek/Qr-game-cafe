@@ -1,4 +1,5 @@
 import { RedisKeys } from '../db/redis.js'
+import { createInitialState } from './game.js'
 
 export function handleLobbyEvents(socket, io, db, redis) {
 
@@ -113,6 +114,16 @@ export function handleLobbyEvents(socket, io, db, redis) {
           tableNumber: guestInfo.rows[0].table_number
         }
       })
+
+      // Oyun state'ini initialize et
+      const initialState = createInitialState(
+        lobby.rows[0].game_slug,
+        hostSessionId,
+        sessionId,
+        lobbyId
+      )
+      await redis.set(RedisKeys.game(lobbyId), JSON.stringify(initialState), { EX: 3600 })
+      io.to(`lobby:${lobbyId}`).emit('game_state_updated', initialState)
 
       // Lobi listesini güncelle
       await broadcastLobbyList(io, db, lobby.rows[0].game_slug)

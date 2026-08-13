@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../../lib/api.js'
 import { useStore } from '../../lib/store.js'
+import { useGameScrollLock } from '../../lib/hooks/useGameScrollLock.js'
 
 function createBoard() { return Array(4).fill(null).map(() => Array(4).fill(0)) }
 
@@ -69,6 +70,9 @@ export default function Game2048Page() {
   const [best, setBest] = useState(0)
   const [status, setStatus] = useState('playing')
 
+  // Scroll kilidi - oyun içinde her zaman aktif
+  useGameScrollLock(true)
+
   function handleMove(dir) {
     if (status !== 'playing') return
     setBoard(prev => {
@@ -109,7 +113,7 @@ export default function Game2048Page() {
   }
 
   return (
-    <div className="page" style={{ alignItems: 'center' }}
+    <div className="page" style={{ alignItems: 'center', overscrollBehavior: 'none' }}
       onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: 16 }}>
         <button onClick={() => navigate('/games')} style={{ background:'none', border:'none', color:'var(--text2)', cursor:'pointer', fontSize:20 }}>←</button>
